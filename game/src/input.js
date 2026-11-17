@@ -1,53 +1,57 @@
-// Keyboard and pointer input. Held keys give a steering direction; one-shot presses (start or
-// restart, pause) are queued as bit flags and taken once by the loop, so a press between two
-// frames is never lost and never counted twice.
-
-export const ACTION_CONFIRM = 1;
-export const ACTION_PAUSE = 2;
-
-const LEFT = new Set(['ArrowLeft', 'KeyA']);
-const RIGHT = new Set(['ArrowRight', 'KeyD']);
-const CONFIRM = new Set(['Space', 'Enter']);
-const PAUSE = new Set(['KeyP', 'Escape']);
-
-export function createInput(target) {
-  let left = false;
-  let right = false;
-  let actions = 0;
-
-  window.addEventListener('keydown', (event) => {
-    if (LEFT.has(event.code)) left = true;
-    else if (RIGHT.has(event.code)) right = true;
-    else if (CONFIRM.has(event.code)) {
-      if (!event.repeat) actions |= ACTION_CONFIRM;
-    } else if (PAUSE.has(event.code)) {
-      if (!event.repeat) actions |= ACTION_PAUSE;
-    } else return;
-    event.preventDefault();
+// Keyboard and mouse state, plus the scripted-input hook the screenshot
+// scenes and the self-test use to drive the game without a human.
+export function createInput(canvas) {
+  const keys = new Set();
+  const input = {
+    keys,
+    mouseX: 640,
+    mouseY: 360,
+    mouseDown: false,
+    clicked: false, // set for one frame when the mouse button goes down
+    scripted: null, // {up,down,left,right,run,action,shoot,mouseX,mouseY} or null
+    anyKey: false,
+  };
+  const code = (e) => e.code;
+  window.addEventListener('keydown', (e) => {
+    if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].includes(e.code)) e.preventDefault();
+    keys.add(code(e));
+    input.anyKey = true;
   });
-  window.addEventListener('keyup', (event) => {
-    if (LEFT.has(event.code)) left = false;
-    else if (RIGHT.has(event.code)) right = false;
+  window.addEventListener('keyup', (e) => keys.delete(code(e)));
+  window.addEventListener('blur', () => keys.clear());
+  canvas.addEventListener('mousemove', (e) => {
+    const r = canvas.getBoundingClientRect();
+    input.mouseX = (e.clientX - r.left) * (canvas.width / r.width);
+    input.mouseY = (e.clientY - r.top) * (canvas.height / r.height);
   });
-  // A key released while the tab is hidden never sends keyup: let go of everything on blur.
-  window.addEventListener('blur', () => {
-    left = false;
-    right = false;
+  canvas.addEventListener('mousedown', (e) => {
+    input.mouseDown = true;
+    input.clicked = true;
+    const r = canvas.getBoundingClientRect();
+    input.mouseX = (e.clientX - r.left) * (canvas.width / r.width);
+    input.mouseY = (e.clientY - r.top) * (canvas.height / r.height);
   });
-  target.addEventListener('pointerdown', () => {
-    actions |= ACTION_CONFIRM;
-  });
+  window.addEventListener('mouseup', () => { input.mouseDown = false; });
+  return input;
+}
 
+// Read the current frame's intent, from the keyboard or from a script.
+export function readIntent(input) {
+  if (input.scripted) return input.scripted;
+  const k = input.keys;
   return {
-    /** -1 for left, 1 for right, 0 for neither or both. */
-    direction() {
-      return (right ? 1 : 0) - (left ? 1 : 0);
-    },
-    /** The one-shot presses since the last call, as ACTION_* flags. */
-    takeActions() {
-      const taken = actions;
-      actions = 0;
-      return taken;
-    },
+    up: k.has('KeyW') || k.has('ArrowUp'),
+    down: k.has('KeyS') || k.has('ArrowDown'),
+    left: k.has('KeyA') || k.has('ArrowLeft'),
+    right: k.has('KeyD') || k.has('ArrowRight'),
+    run: k.has('ShiftLeft') || k.has('ShiftRight'),
+    brake: k.has('Space'),
+    action: k.has('KeyE'),
+    reload: k.has('KeyR'),
+    pause: k.has('KeyP') || k.has('Escape'),
+    mute: k.has('KeyM'),
+    shoot: input.mouseDown,
+    mouseX: input.mouseX,
+    mouseY: input.mouseY,
   };
 }
