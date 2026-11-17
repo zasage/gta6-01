@@ -18,15 +18,26 @@ function makeDriver(route) {
     if (!car) return { up: false, down: false, left: false, right: false, run: false, brake: false, action: false, reload: false, pause: false, mute: false, shoot: false, mouseX: 640, mouseY: 360 };
     const target = route[Math.min(leg, route.length - 1)];
     const dx = target[0] - car.x, dy = target[1] - car.y;
-    if (Math.hypot(dx, dy) < 70 && leg < route.length - 1) leg += 1;
+    const distToTarget = Math.hypot(dx, dy);
+    if (distToTarget < 70 && leg < route.length - 1) leg += 1;
+    // Past the last waypoint, just cruise straight: aiming at a point
+    // behind the car would only make it circle off the road.
+    if (leg === route.length - 1 && distToTarget < 120) {
+      return { up: true, down: false, left: false, right: false, run: false, brake: false, action: false, reload: false, pause: false, mute: false, shoot: false, mouseX: 640, mouseY: 360 };
+    }
     const want = Math.atan2(dy, dx);
     let diff = want - car.angle;
     while (diff > Math.PI) diff -= Math.PI * 2;
     while (diff < -Math.PI) diff += Math.PI * 2;
+    // Keep rolling through turns: a car that brakes to a stop cannot steer,
+    // so only brake for sharp turns at speed — and coast into a turn when
+    // close to the waypoint, so the car sheds speed before it swings.
+    const speed = Math.abs(car.speed);
+    const coasting = distToTarget < 170 && Math.abs(diff) > 0.5;
     return {
-      up: Math.abs(diff) < 1.1, down: false,
+      up: Math.abs(diff) < 2.0 && !coasting, down: false,
       left: diff < -0.08, right: diff > 0.08,
-      run: false, brake: Math.abs(diff) >= 1.1,
+      run: false, brake: Math.abs(diff) > 0.6 && speed > 180,
       action: false, reload: false, pause: false, mute: false,
       shoot: false, mouseX: 640, mouseY: 360,
     };
@@ -62,18 +73,20 @@ export function stageShot(name, seed) {
     return { state, screen: SCREEN_TITLE };
   }
   if (name === 'drive') {
-    const car = placePlayerInCar(state, 1530, 1700, '#e8384f', 'sport');
-    car.angle = -Math.PI / 2; // facing north, up the road
-    const drive = makeDriver([[1530, 1530], [1870, 1530], [2210, 1530], [2550, 1530], [2890, 1530], [2890, 1190]]);
-    for (let i = 0; i < 9 / STEP; i += 1) stepGame(state, drive(state), STEP);
+    // A straight high-speed run down the Downtown avenue: no turns, so the
+    // car holds the centreline and the frame is all speed, traffic and city.
+    const car = placePlayerInCar(state, 510, 1530, '#e8384f', 'sport');
+    car.angle = 0; // facing east, down the road
+    const drive = makeDriver([[1190, 1530], [1870, 1530], [2550, 1530], [2890, 1530]]);
+    for (let i = 0; i < 6 / STEP; i += 1) stepGame(state, drive(state), STEP);
     return { state, screen: SCREEN_PLAY };
   }
   if (name === 'chase') {
     const car = placePlayerInCar(state, 1870, 1530, '#ffb02e', 'sedan');
     car.angle = Math.PI; // facing west, down the road
     setWanted(state, 3);
-    const drive = makeDriver([[1530, 1530], [1190, 1530], [850, 1530], [510, 1530], [510, 1870], [510, 2210], [510, 2550], [510, 2890]]);
-    for (let i = 0; i < 10 / STEP; i += 1) stepGame(state, drive(state), STEP);
+    const drive = makeDriver([[1530, 1530], [1190, 1530], [850, 1530], [510, 1530], [510, 1870], [510, 2210], [510, 2550], [510, 2890], [850, 2890], [1190, 2890]]);
+    for (let i = 0; i < 9 / STEP; i += 1) stepGame(state, drive(state), STEP);
     return { state, screen: SCREEN_PLAY };
   }
   // mission: The Package, on foot at the Marina. No wanted level here — the

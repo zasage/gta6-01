@@ -366,19 +366,21 @@ export function createRenderer(canvas) {
       ctx.fill();
       text(state.objective.text, 30, 43, 18, '#ffb02e', 'left', true);
     }
-    // Cash and health.
+    // Cash and health. In a car the bar is the car's health (that is what
+    // a crash costs); on foot it is Rae's.
     text(`$${state.cash.toLocaleString('en-US')}`, 16, 96, 26, PALETTE.money, 'left', true);
-    const hp = state.player.health;
+    const hp = state.player.inCar ? state.player.car.health : state.player.health;
+    const hpLabel = state.player.inCar ? 'CAR' : 'HP';
     ctx.fillStyle = 'rgba(12,16,24,0.78)';
     roundRect(16, 108, 180, 16, 8);
     ctx.fill();
     ctx.fillStyle = hp > 50 ? '#7ee787' : hp > 25 ? '#ffb02e' : '#e8384f';
     roundRect(16, 108, Math.max(4, 180 * (hp / 100)), 16, 8);
     ctx.fill();
-    text(`HP ${Math.ceil(hp)}`, 204, 121, 15, '#e8e8e8', 'left', true);
+    text(`${hpLabel} ${Math.ceil(hp)}`, 204, 121, 15, '#e8e8e8', 'left', true);
     // Ammo on foot, speed in a car.
     if (state.player.inCar) {
-      const speed = Math.abs(state.player.car.speed) * 0.12;
+      const speed = Math.abs(state.player.car.speed) * 0.25;
       text(`${Math.round(speed)} mph`, VIEW_W - 16, VIEW_H - 24, 30, '#ffffff', 'right', true);
       text(state.player.car.health < 40 ? 'CAR SMOKING — FIND RICO\'S AUTO' : '', VIEW_W - 16, VIEW_H - 56, 16, '#ffb02e', 'right', true);
     } else {

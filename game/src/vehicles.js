@@ -15,7 +15,7 @@ export function makeCar(x, y, angle, color, kind, model) {
     // Traffic state: which road it is on and which way it drives.
     horizontal: true, road: 0, dir: 1, lane: 11,
     targetI: 0, targetJ: 0, decidedAt: -1,
-    knockX: 0, knockY: 0, dead: false,
+    knockX: 0, knockY: 0, dead: false, ramCooldown: 0,
   };
 }
 
@@ -78,8 +78,10 @@ export function stepDrivenCar(car, throttle, steer, handbrake, dt, city) {
     lSpeed *= Math.exp(-CAR.grip * dt);
   }
   fSpeed = clamp(fSpeed, -CAR.maxReverse, CAR.maxSpeed);
-  const speedRatio = clamp(Math.abs(fSpeed) / CAR.maxSpeed, 0, 1);
-  car.angle += steer * CAR.turnRate * dt * speedRatio * (fSpeed >= 0 ? 1 : -1);
+  // Steering answers even at low speed (an arcade floor of 0.3), so a car
+  // creeping through a turn can still turn.
+  const steerFactor = clamp(Math.abs(fSpeed) / 200, 0.3, 1);
+  car.angle += steer * CAR.turnRate * dt * steerFactor * (fSpeed >= 0 ? 1 : -1);
   const nfx = Math.cos(car.angle), nfy = Math.sin(car.angle);
   car.vx = nfx * fSpeed - nfy * lSpeed;
   car.vy = nfy * fSpeed + nfx * lSpeed;
@@ -127,7 +129,7 @@ export function collideCars(a, b) {
   b.x += nx * push; b.y += ny * push;
   const closing = Math.abs((a.vx - b.vx) * nx + (a.vy - b.vy) * ny);
   // A shove along the impact normal, shared between the two.
-  const shove = closing * 0.4;
+  const shove = closing * 0.25;
   a.vx -= nx * shove; a.vy -= ny * shove;
   b.vx += nx * shove; b.vy += ny * shove;
   return closing;

@@ -24,7 +24,7 @@ export function createGameState(seed, opts) {
   const rng = makeRng(seed);
   const city = buildCity(rng);
   const cars = [];
-  for (let i = 0; i < 34; i += 1) cars.push(spawnTrafficCar(city, rng));
+  for (let i = 0; i < 28; i += 1) cars.push(spawnTrafficCar(city, rng));
   for (const c of spawnParkedCars(city, rng)) cars.push(c);
   const state = {
     seed,
@@ -174,8 +174,8 @@ export function stepGame(state, intent, dt) {
     p.x = car.x;
     p.y = car.y;
     p.aimAngle = car.angle;
-    if (impact > 120) {
-      car.health -= impact * 0.06;
+    if (impact > 180) {
+      car.health -= impact * 0.02;
       state.audio.crash(impact / 400);
       spawnParticles(state, car.x, car.y, 'spark', 6);
       scarePeds(state.peds, car.x, car.y, 260);
@@ -291,9 +291,9 @@ export function stepGame(state, intent, dt) {
       if (a.dead || b.dead) continue;
       if (a.kind === 'parked' && b.kind === 'parked') continue;
       const closing = collideCars(a, b);
-      if (closing > 160) {
-        a.health -= closing * 0.03;
-        b.health -= closing * 0.03;
+      if (closing > 200) {
+        a.health -= closing * 0.015;
+        b.health -= closing * 0.015;
         if ((a === p.car || b === p.car) && closing > 200) {
           state.audio.crash(closing / 500);
           spawnParticles(state, (a.x + b.x) / 2, (a.y + b.y) / 2, 'spark', 5);
@@ -386,9 +386,10 @@ export function stepGame(state, intent, dt) {
     px: p.x, py: p.y, inCar: !!p.inCar, playerCar: p.car,
     city: state.city, rng, bullets: state.bullets, player: p,
     onBusted: () => { events.busted = true; },
-    onCrash: (closing) => {
-      if (p.car) {
-        p.car.health -= closing * 0.05;
+    onCrash: (closing, policeCar) => {
+      if (p.car && closing > 200) {
+        p.car.health -= closing * 0.03;
+        if (policeCar) policeCar.ramCooldown = 1.5; // back off after a ram
         state.audio.crash(closing / 500);
         spawnParticles(state, p.car.x, p.car.y, 'spark', 6);
       }

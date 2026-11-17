@@ -55,13 +55,13 @@ export const PLAYER = {
 
 // Car handling. A stolen sedan is not a race car: it leans, it slides a little.
 export const CAR = {
-  accel: 420,
+  accel: 380,
   brake: 620,
   reverseAccel: 260,
-  maxSpeed: 560,
+  maxSpeed: 430,
   maxReverse: 180,
-  turnRate: 2.5, // radians per second at full lock, scaled by speed
-  grip: 6.5, // how fast sideways velocity bleeds off
+  turnRate: 4.0, // radians per second at full lock; a city block is 340 wide
+  grip: 8.0, // how fast sideways velocity bleeds off
   radius: 16,
   length: 44,
   width: 22,

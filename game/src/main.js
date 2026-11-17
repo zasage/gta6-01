@@ -32,11 +32,34 @@ function announce(message) {
 }
 
 function runShot(name) {
-  const { state, screen } = stageShot(name, seed);
+  let staged;
+  try {
+    staged = stageShot(name, seed);
+    document.title = `SHOT ${name} staged`;
+  } catch (err) {
+    document.title = `SHOT ${name} ERROR: ${err && err.message}`;
+    const pre = document.createElement('pre');
+    pre.id = 'shot-error';
+    pre.textContent = `SHOT ERROR: ${err && err.stack}`;
+    document.body.appendChild(pre);
+    return;
+  }
+  const { state, screen } = staged;
   state.screen = screen;
+  // Exposed for the screenshot tooling to inspect the staged frame.
+  window.__shotState = state;
   let painted = 0;
   function paint() {
-    renderer.draw(state, screen, !!loadSave());
+    try {
+      renderer.draw(state, screen, !!loadSave());
+    } catch (err) {
+      document.title = `SHOT ${name} PAINT ERROR: ${err && err.message}`;
+      const pre = document.createElement('pre');
+      pre.id = 'shot-error';
+      pre.textContent = `PAINT ERROR: ${err && err.stack}`;
+      document.body.appendChild(pre);
+      return;
+    }
     painted += 1;
     if (painted < 2) requestAnimationFrame(paint);
     else window.__shotReady = true;

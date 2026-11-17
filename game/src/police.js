@@ -69,7 +69,8 @@ export function stepWanted(wanted, dt, ctx) {
   }
   if (wanted.policeCars.length > wantCars) wanted.policeCars.length = wantCars;
 
-  // Chase: steer at the player's predicted position, throttle on.
+  // Chase: steer at the player's predicted position, throttle on — but back
+  // off for a beat after a ram, so three cars cannot shred the player at once.
   for (const car of wanted.policeCars) {
     const lead = 0.35;
     const tx = ctx.px + (ctx.playerCar ? ctx.playerCar.vx * lead : 0);
@@ -80,7 +81,11 @@ export function stepWanted(wanted, dt, ctx) {
     while (diff < -Math.PI) diff += Math.PI * 2;
     const steer = clamp(diff * 2.2, -1, 1);
     const dist = Math.hypot(tx - car.x, ty - car.y);
-    const throttle = dist > 60 ? 1 : 0.4;
+    let throttle = dist > 60 ? 1 : 0.4;
+    if (car.ramCooldown > 0) {
+      car.ramCooldown -= dt;
+      throttle = 0.25;
+    }
     stepDrivenCar(car, throttle, steer, false, dt, ctx.city);
     // Too far behind to matter: reappear on a road near the player.
     if (dist > 1100) {
